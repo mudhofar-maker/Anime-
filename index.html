@@ -1,1 +1,734 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Anime Maker Studio - Ultra Stable</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        html, body {
+            width: 100%; height: 100%; background-color: #ffffff; color: #fff;
+            font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column;
+        }
+        
+        /* Top Toolbar */
+        .top-toolbar {
+            height: 50px; background-color: #1f1f1f; display: flex; align-items: center; justify-content: space-around;
+            flex-shrink: 0; z-index: 50; position: relative;
+        }
+        .tool-btn {
+            background: none; border: none; color: #aaa; font-size: 18px; padding: 6px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+        }
+        .tool-btn.active { background-color: #333; color: #fff; }
+        .color-preview { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
 
+        /* Brush Settings Panel */
+        .brush-settings-panel {
+            position: absolute; top: 55px; left: 10px; right: 10px; background: rgba(30,30,30,0.95);
+            padding: 12px; border-radius: 12px; display: none; flex-direction: column; gap: 8px; z-index: 60;
+            border: 1px solid #444; box-shadow: 0 4px 15px rgba(0,0,0,0.6); max-width: 400px; margin: 0 auto;
+        }
+        .brush-row { display: flex; align-items: center; gap: 12px; }
+        .brush-preview-box { width: 50px; height: 50px; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .brush-sliders { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .brush-slider-item { display: flex; align-items: center; gap: 8px; }
+        .brush-slider-item input[type="range"] { flex: 1; accent-color: #d946ef; height: 6px; border-radius: 3px; background: #444; }
+
+        /* Color Wheel Modal */
+        .color-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 200;
+            display: none; align-items: center; justify-content: center;
+        }
+        .color-dialog {
+            background: #1e1e1e; width: 92%; max-width: 360px; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; border: 1px solid #333;
+        }
+        .color-dialog-header { display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: #fff; }
+        .eyedropper-btn { background: #2a2a2a; border: none; color: #fff; font-size: 18px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; border: 1px solid #555; }
+        .eyedropper-btn.active-picker { background: #d946ef; border-color: #fff; }
+        
+        .color-picker-container { display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
+        #colorWheelCanvas { border-radius: 50%; cursor: crosshair; touch-action: none; }
+        
+        .color-palette-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 4px; }
+        .palette-dot { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+        .palette-dot.selected { border-color: #fff; }
+        .color-action-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+        .modal-btn { padding: 8px 18px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .modal-btn.cancel { background: #333; color: #fff; }
+        .modal-btn.apply { background: #d946ef; color: #fff; }
+
+        /* Eyedropper Banner */
+        .eyedropper-banner {
+            position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: #d946ef; color: #fff;
+            padding: 8px 16px; border-radius: 20px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+
+        /* Canvas Area */
+        .canvas-container {
+            flex: 1; background-color: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
+            touch-action: none; width: 100%; min-height: 0; z-index: 1;
+        }
+        #drawCanvas {
+            background-color: #ffffff; cursor: crosshair;
+            touch-action: none; transform-origin: center center; position: absolute;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 100;
+            display: none; flex-direction: column;
+        }
+        .modal-header {
+            height: 56px; background: #1f1f1f; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid #333;
+        }
+        .modal-header h2 { font-size: 18px; font-weight: normal; color: #fff; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        
+        .frame-card {
+            background: #1f1f1f; border-radius: 8px; display: flex; align-items: center; padding: 10px; gap: 12px; border: 1px solid #333;
+        }
+        .frame-card.active { border-color: #ef4444; }
+        .frame-thumb { width: 60px; height: 60px; background: #fff; border-radius: 4px; object-fit: contain; }
+        .frame-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .frame-info-top { display: flex; justify-content: space-between; font-size: 13px; color: #ccc; }
+        .frame-actions { display: flex; gap: 12px; font-size: 13px; font-weight: bold; }
+        .action-add { color: #60a5fa; cursor: pointer; background: none; border: none; font-size: 13px; }
+        .action-copy { color: #a78bfa; cursor: pointer; background: none; border: none; font-size: 13px; }
+        .action-remove { color: #f87171; cursor: pointer; background: none; border: none; font-size: 13px; }
+
+        .audio-item {
+            background: #1f1f1f; padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333;
+        }
+        .audio-item button { background: #3b82f6; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+
+        /* Bottom Toolbar */
+        .bottom-toolbar {
+            height: 56px; background-color: #1f1f1f; display: flex; align-items: center; justify-content: space-around;
+            flex-shrink: 0; z-index: 50; position: relative;
+        }
+        .bottom-info { font-size: 11px; color: #aaa; text-align: center; line-height: 1.2; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+        .bottom-info:active { background-color: #333; }
+
+        #galleryInput { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- BANNER EYEDROPPER -->
+    <div class="eyedropper-banner" id="eyedropperBanner">💉 Ketuk objek di kanvas untuk mengambil warna!</div>
+
+    <!-- TOP TOOLBAR -->
+    <div class="top-toolbar">
+        <button class="tool-btn active" id="btnPencil" onclick="setTool('pencil')" title="Pensil/Kuas">✏️</button>
+        <button class="tool-btn" id="btnFill" onclick="setTool('fill')" title="Cat Tumpah">🪣</button>
+        <button class="tool-btn" onclick="openOutline()" title="Outline & Slow Motion">🥞</button>
+        <button class="tool-btn" onclick="openAudioModal()" title="Audio / Efek Suara">🔊</button>
+        <button class="tool-btn" id="btnEraser" onclick="setTool('eraser')" title="Penghapus">🧹</button>
+        <button class="tool-btn" id="btnPan" onclick="setTool('pan')" title="Geser / Zoom / Putar">✋</button>
+        <div class="color-preview" id="colorPreview" onclick="openColorModal()" title="Pilih Warna"></div>
+        <button class="tool-btn" onclick="undo()" title="Undo">↩️</button>
+        <button class="tool-btn" onclick="redo()" title="Redo">↪️</button>
+    </div>
+
+    <!-- BRUSH SETTINGS PANEL -->
+    <div class="brush-settings-panel" id="brushSettingsPanel">
+        <div style="font-size: 12px; font-weight: bold; color: #d946ef; letter-spacing: 1px;">KUAS & OPASITAS</div>
+        <div class="brush-row">
+            <div class="brush-preview-box">
+                <canvas id="brushPreviewCanvas" width="45" height="45"></canvas>
+            </div>
+            <div class="brush-sliders">
+                <div class="brush-slider-item">
+                    <span style="font-size:10px; width:40px;">Ukuran</span>
+                    <input type="range" id="brushSizeRange" min="1" max="100" value="5" oninput="changeBrushSize(this.value)">
+                </div>
+                <div class="brush-slider-item">
+                    <span style="font-size:10px; width:40px;">Opak</span>
+                    <input type="range" id="brushOpacityRange" min="0.05" max="1" step="0.05" value="1" oninput="changeBrushOpacity(this.value)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COLOR WHEEL MODAL -->
+    <div class="color-modal" id="colorModal">
+        <div class="color-dialog">
+            <div class="color-dialog-header">
+                <span>Warna</span>
+                <button class="eyedropper-btn" id="eyedropperToggleBtn" onclick="activateCanvasEyedropper()" title="Pipet Warna">💉</button>
+            </div>
+            <div class="color-picker-container">
+                <canvas id="colorWheelCanvas" width="220" height="220"></canvas>
+            </div>
+            <div class="color-palette-grid" id="paletteGrid"></div>
+            <div class="color-action-btns">
+                <button class="modal-btn cancel" onclick="closeColorModal()">Batalkan</button>
+                <button class="modal-btn apply" onclick="closeColorModal()">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OUTLINE & SLOW MOTION MODAL -->
+    <div class="modal-overlay" id="outlineModal">
+        <div class="modal-header">
+            <h2>Outline & Slow Motion</h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="speedSelect" onchange="changeSpeed(this.value)" style="background:#2a2a2a; color:#fff; border:1px solid #444; padding:4px 6px; border-radius:4px; font-size:11px;">
+                    <option value="800">0.25x (Super Slow)</option>
+                    <option value="400">0.5x (Slow Motion)</option>
+                    <option value="150" selected>1.0x (Normal)</option>
+                    <option value="75">2.0x (Cepat)</option>
+                </select>
+                <button onclick="closeOutline()" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
+            </div>
+        </div>
+        <div class="modal-body" id="outlineFrameList"></div>
+        <div style="padding: 12px; background: #1f1f1f; text-align: center;">
+            <button onclick="closeOutline()" style="background:none; border:none; color:#60a5fa; cursor:pointer; font-size:13px;">Kembali ke Kanvas ↩</button>
+        </div>
+    </div>
+
+    <!-- AUDIO STUDIO MODAL -->
+    <div class="modal-overlay" id="audioModal">
+        <div class="modal-header">
+            <h2>Audio Studio & Sound Effects</h2>
+            <button onclick="closeAudioModal()" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 12px; color: #aaa;">Pilih efek suara untuk frame aktif saat animasi diputar:</p>
+            <div class="audio-item">
+                <div><strong>Rintihan Wanita Dewasa</strong><br><span style="font-size:11px; color:#888;">Suara vokal ekspresi dramatis</span></div>
+                <button onclick="assignAudioToCurrentFrame('sigh')">Pasang</button>
+            </div>
+            <div class="audio-item">
+                <div><strong>Suara Pintu</strong><br><span style="font-size:11px; color:#888;">Suara pintu dibuka/ditutup</span></div>
+                <button onclick="assignAudioToCurrentFrame('door')">Pasang</button>
+            </div>
+            <div class="audio-item">
+                <div><strong>Derap Kaki</strong><br><span style="font-size:11px; color:#888;">Suara langkah kaki berjalan</span></div>
+                <button onclick="assignAudioToCurrentFrame('footsteps')">Pasang</button>
+            </div>
+            <div class="audio-item">
+                <div><strong>Hapus Audio</strong></div>
+                <button style="background:#ef4444;" onclick="assignAudioToCurrentFrame(null)">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CANVAS CONTAINER -->
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="drawCanvas" width="800" height="1200"></canvas>
+    </div>
+
+    <!-- BOTTOM TOOLBAR -->
+    <div class="bottom-toolbar">
+        <button class="tool-btn" onclick="togglePlay()" id="btnPlay" title="Play">▶️</button>
+        <button class="tool-btn" onclick="prevFrame()" title="Sebelumnya">⏮️</button>
+        <div class="bottom-info" onclick="openOutline()" title="Buka Outline & SlowMo">
+            <span id="frameIndicator">1 / 1</span><br>
+            <span style="font-size: 9px; color: #4ade80;" id="audioStatusIndicator">No Audio</span>
+        </div>
+        <button class="tool-btn" onclick="nextFrame()" title="Berikutnya">⏭️</button>
+        <button class="tool-btn" onclick="addNewFrame()" title="Tambah Frame">+</button>
+        <button class="tool-btn" onclick="duplicateFrame()" title="Duplikat">📋</button>
+        <button class="tool-btn" onclick="openGallery()" title="Galeri">📁</button>
+    </div>
+
+    <input type="file" id="galleryInput" accept="image/*" onchange="handleImageUpload(event)">
+
+    <script>
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+
+        let currentTool = 'pencil';
+        let currentColor = '#ef4444';
+        let brushSize = 5;
+        let brushOpacity = 1.0;
+        let isDrawing = false;
+        let isPlaying = false;
+        let playTimeout = null;
+        let playSpeed = 150;
+        let activePointerId = null;
+        let isEyedropperActive = false;
+
+        let frames = [];
+        let currentFrameIndex = 0;
+        let currentLayerIndex = 0;
+
+        let scale = 1, panX = 0, panY = 0, rotation = 0;
+        let pointers = [];
+        let initialDistance = null, initialAngle = null;
+
+        const presetColors = ['#ef4444', '#f97316', '#eab308', '#4ade80', '#38bdf8', '#60a5fa', '#c084fc', '#f472b6', '#000000', '#ffffff', '#78350f', '#1e293b'];
+
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSoundEffect(type) {
+            if (!type) return;
+            try {
+                initAudio();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                let now = audioCtx.currentTime;
+
+                if (type === 'sigh') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(150, now + 0.4);
+                    gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5);
+                } else if (type === 'door') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, now); osc.frequency.linearRampToValueAtTime(220, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'footsteps') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(80, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+                    gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now); osc.stop(now + 0.15);
+                }
+            } catch(e) {}
+        }
+
+        function initApp() {
+            canvas.width = 800;
+            canvas.height = 1200;
+            updateCanvasTransform();
+            addNewFrame(false);
+            initColorWheel();
+            buildPalette();
+            updateColorPreview();
+            updateBrushPreview();
+            setTool('pencil');
+        }
+
+        function initColorWheel() {
+            const wheelCanvas = document.getElementById('colorWheelCanvas');
+            const wCtx = wheelCanvas.getContext('2d');
+            const radius = wheelCanvas.width / 2;
+
+            wCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+            for (let angle = 0; angle < 360; angle++) {
+                let startAngle = (angle - 2) * Math.PI / 180;
+                let endAngle = angle * Math.PI / 180;
+                wCtx.beginPath();
+                wCtx.moveTo(radius, radius);
+                wCtx.arc(radius, radius, radius, startAngle, endAngle);
+                wCtx.closePath();
+                wCtx.fillStyle = `hsl(${angle}, 100%, 50%)`;
+                wCtx.fill();
+            }
+
+            wCtx.beginPath();
+            wCtx.moveTo(radius, radius - 60);
+            wCtx.lineTo(radius - 55, radius + 40);
+            wCtx.lineTo(radius + 55, radius + 40);
+            wCtx.closePath();
+            wCtx.fillStyle = currentColor;
+            wCtx.fill();
+
+            wheelCanvas.onpointerdown = (e) => {
+                const rect = wheelCanvas.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+                let y = e.clientY - rect.top;
+                let pixel = wCtx.getImageData(x, y, 1, 1).data;
+                currentColor = rgbToHex(pixel[0], pixel[1], pixel[2]);
+                updateColorPreview();
+            };
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        function buildPalette() {
+            let grid = document.getElementById('paletteGrid');
+            grid.innerHTML = '';
+            presetColors.forEach(c => {
+                let dot = document.createElement('div');
+                dot.className = `palette-dot ${c === currentColor ? 'selected' : ''}`;
+                dot.style.backgroundColor = c;
+                dot.onclick = () => { currentColor = c; updateColorPreview(); buildPalette(); };
+                grid.appendChild(dot);
+            });
+        }
+
+        function openColorModal() { initAudio(); document.getElementById('colorModal').style.display = 'flex'; }
+        function closeColorModal() { 
+            document.getElementById('colorModal').style.display = 'none'; 
+            isEyedropperActive = false;
+            document.getElementById('eyedropperToggleBtn').classList.remove('active-picker');
+            document.getElementById('eyedropperBanner').style.display = 'none';
+            buildPalette(); 
+        }
+
+        function updateColorPreview() {
+            document.getElementById('colorPreview').style.backgroundColor = currentColor;
+            updateBrushPreview();
+        }
+
+        function updateBrushPreview() {
+            let bCanvas = document.getElementById('brushPreviewCanvas');
+            let bCtx = bCanvas.getContext('2d');
+            bCtx.clearRect(0, 0, 45, 45);
+            bCtx.beginPath();
+            bCtx.arc(22.5, 22.5, Math.min(brushSize / 2, 18), 0, Math.PI * 2);
+            bCtx.fillStyle = currentColor;
+            bCtx.globalAlpha = brushOpacity;
+            bCtx.fill();
+            bCtx.globalAlpha = 1.0;
+        }
+
+        function activateCanvasEyedropper() {
+            isEyedropperActive = true;
+            document.getElementById('eyedropperToggleBtn').classList.add('active-picker');
+            document.getElementById('colorModal').style.display = 'none';
+            document.getElementById('eyedropperBanner').style.display = 'block';
+        }
+
+        function changeBrushSize(val) { brushSize = parseInt(val); updateBrushPreview(); }
+        function changeBrushOpacity(val) { brushOpacity = parseFloat(val); updateBrushPreview(); }
+        function openAudioModal() { initAudio(); document.getElementById('audioModal').style.display = 'flex'; }
+        function closeAudioModal() { document.getElementById('audioModal').style.display = 'none'; }
+        function assignAudioToCurrentFrame(type) {
+            frames[currentFrameIndex].audio = type;
+            closeAudioModal();
+            alert(type ? `Audio "${type}" dipasang ke frame ${currentFrameIndex + 1}` : "Audio dihapus.");
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.top-toolbar .tool-btn').forEach(b => {
+                if(b.title !== 'Outline & Slow Motion' && b.title !== 'Audio / Efek Suara' && b.title !== 'Undo' && b.title !== 'Redo') b.classList.remove('active');
+            });
+            if(tool === 'pencil') document.getElementById('btnPencil').classList.add('active');
+            if(tool === 'fill') document.getElementById('btnFill').classList.add('active');
+            if(tool === 'eraser') document.getElementById('btnEraser').classList.add('active');
+            if(tool === 'pan') document.getElementById('btnPan').classList.add('active');
+
+            document.getElementById('brushSettingsPanel').style.display = (tool === 'pencil' || tool === 'eraser') ? 'flex' : 'none';
+        }
+
+        function changeSpeed(val) { playSpeed = parseInt(val); }
+
+        // --- KONTROL NAVIGASI KANVAS (HANYA AKTIF SAAT TOOL 'PAN' / TANGAN DIPILIH) ---
+        container.addEventListener('pointerdown', (e) => {
+            initAudio();
+            if (isPlaying || currentTool !== 'pan') return;
+            pointers.push(e);
+        });
+
+        container.addEventListener('pointermove', (e) => {
+            if (currentTool !== 'pan') return;
+            let idx = pointers.findIndex(p => p.pointerId === e.pointerId);
+            if (idx !== -1) pointers[idx] = e;
+
+            if (pointers.length >= 2) {
+                let dx = pointers[0].clientX - pointers[1].clientX;
+                let dy = pointers[0].clientY - pointers[1].clientY;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                if (!initialDistance || initialAngle === null) {
+                    initialDistance = dist; initialAngle = angle;
+                } else {
+                    scale = Math.max(0.4, Math.min(6, scale * (dist / initialDistance)));
+                    rotation += (angle - initialAngle);
+                    initialDistance = dist; initialAngle = angle;
+                    updateCanvasTransform();
+                }
+            } else if (pointers.length === 1) {
+                panX += e.movementX; 
+                panY += e.movementY; 
+                updateCanvasTransform();
+            }
+        });
+
+        function removePointer(e) { 
+            pointers = pointers.filter(p => p.pointerId !== e.pointerId); 
+            if (pointers.length < 2) { initialDistance = null; initialAngle = null; } 
+        }
+        container.addEventListener('pointerup', removePointer);
+        container.addEventListener('pointercancel', removePointer);
+
+        function updateCanvasTransform() { canvas.style.transform = `translate(${panX}px, ${panY}px) rotate(${rotation}deg) scale(${scale})`; }
+
+        function getCanvasPoint(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            let x = clientX - (rect.left + rect.width / 2);
+            let y = clientY - (rect.top + rect.height / 2);
+            let rad = -rotation * (Math.PI / 180);
+            let rx = x * Math.cos(rad) - y * Math.sin(rad);
+            let ry = x * Math.sin(rad) + y * Math.cos(rad);
+            return {
+                x: (rx / rect.width) * canvas.width + (canvas.width / 2),
+                y: (ry / rect.height) * canvas.height + (canvas.height / 2)
+            };
+        }
+
+        function saveHistory() {
+            let f = frames[currentFrameIndex];
+            if (!f.history) f.history = [];
+            if (f.historyStep === undefined) f.historyStep = -1;
+            let snapshot = f.layers.map(l => {
+                let cp = document.createElement('canvas');
+                cp.width = canvas.width; cp.height = canvas.height;
+                cp.getContext('2d').drawImage(l, 0, 0);
+                return cp;
+            });
+            f.historyStep++;
+            f.history.length = f.historyStep;
+            f.history.push(snapshot);
+        }
+
+        function undo() {
+            if (isPlaying) return;
+            let f = frames[currentFrameIndex];
+            if (f && f.history && f.historyStep > 0) {
+                f.historyStep--;
+                f.layers = f.history[f.historyStep].map(cp => {
+                    let l = document.createElement('canvas');
+                    l.width = canvas.width; l.height = canvas.height;
+                    l.getContext('2d').drawImage(cp, 0, 0);
+                    return l;
+                });
+                renderFrame();
+            }
+        }
+
+        function redo() {
+            if (isPlaying) return;
+            let f = frames[currentFrameIndex];
+            if (f && f.history && f.historyStep < f.history.length - 1) {
+                f.historyStep++;
+                f.layers = f.history[f.historyStep].map(cp => {
+                    let l = document.createElement('canvas');
+                    l.width = canvas.width; l.height = canvas.height;
+                    l.getContext('2d').drawImage(cp, 0, 0);
+                    return l;
+                });
+                renderFrame();
+            }
+        }
+
+        let lastX = 0, lastY = 0;
+        
+        // --- EVENT GAMBAR EKSKLUSIF (DIKUNCI AGAR TIDAK BISA LARI-LARI) ---
+        canvas.addEventListener('pointerdown', (e) => {
+            initAudio();
+            if (isPlaying || currentTool === 'pan') return;
+            if (activePointerId !== null) return; // Cegah konflik sentuhan ganda
+
+            activePointerId = e.pointerId;
+            const pt = getCanvasPoint(e.clientX, e.clientY);
+
+            if (isEyedropperActive) {
+                let lCtx = frames[currentFrameIndex].layers[currentLayerIndex].getContext('2d');
+                let pData = lCtx.getImageData(Math.floor(pt.x), Math.floor(pt.y), 1, 1).data;
+                if (pData[3] === 0) {
+                    pData = ctx.getImageData(Math.floor(pt.x), Math.floor(pt.y), 1, 1).data;
+                }
+                currentColor = rgbToHex(pData[0], pData[1], pData[2]);
+                updateColorPreview();
+                isEyedropperActive = false;
+                document.getElementById('eyedropperToggleBtn').classList.remove('active-picker');
+                document.getElementById('eyedropperBanner').style.display = 'none';
+                document.getElementById('colorModal').style.display = 'flex';
+                activePointerId = null;
+                return;
+            }
+
+            isDrawing = true;
+            lastX = pt.x; lastY = pt.y;
+            let lCtx = frames[currentFrameIndex].layers[currentLayerIndex].getContext('2d');
+            if (currentTool === 'fill') {
+                lCtx.fillStyle = currentColor;
+                lCtx.fillRect(0, 0, canvas.width, canvas.height);
+                saveHistory(); renderFrame(); isDrawing = false;
+                activePointerId = null;
+            }
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (!isDrawing || e.pointerId !== activePointerId || isPlaying || currentTool === 'pan' || isEyedropperActive) return;
+            const pt = getCanvasPoint(e.clientX, e.clientY);
+            let lCtx = frames[currentFrameIndex].layers[currentLayerIndex].getContext('2d');
+            lCtx.beginPath();
+            lCtx.moveTo(lastX, lastY); lCtx.lineTo(pt.x, pt.y);
+            lCtx.strokeStyle = currentTool === 'eraser' ? 'rgba(0,0,0,1)' : currentColor;
+            lCtx.globalCompositeOperation = currentTool === 'eraser' ? 'destination-out' : 'source-over';
+            lCtx.lineWidth = brushSize; lCtx.lineCap = 'round'; lCtx.lineJoin = 'round';
+            lCtx.globalAlpha = currentTool === 'eraser' ? 1.0 : brushOpacity;
+            lCtx.stroke();
+            lCtx.globalCompositeOperation = 'source-over';
+            lCtx.globalAlpha = 1.0;
+            lastX = pt.x; lastY = pt.y;
+            renderFrame();
+        });
+
+        function endDrawing(e) {
+            if (e.pointerId === activePointerId && isDrawing) {
+                isDrawing = false;
+                activePointerId = null;
+                saveHistory();
+            }
+        }
+        canvas.addEventListener('pointerup', endDrawing);
+        canvas.addEventListener('pointercancel', endDrawing);
+
+        function renderFrame(playing = false) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (!playing && currentFrameIndex > 0) {
+                ctx.save(); ctx.globalAlpha = 0.25;
+                frames[currentFrameIndex - 1].layers.forEach(pl => ctx.drawImage(pl, 0, 0));
+                ctx.restore();
+            }
+            frames[currentFrameIndex].layers.forEach(cl => ctx.drawImage(cl, 0, 0));
+        }
+
+        function addNewFrame(copyCurrent = false) {
+            let newLayer = document.createElement('canvas');
+            newLayer.width = canvas.width; newLayer.height = canvas.height;
+            newLayer.getContext('2d').fillStyle = 'transparent';
+            let newLayers = [newLayer];
+            if (copyCurrent && frames[currentFrameIndex]) {
+                newLayers = frames[currentFrameIndex].layers.map(l => {
+                    let cl = document.createElement('canvas');
+                    cl.width = canvas.width; cl.height = canvas.height;
+                    cl.getContext('2d').drawImage(l, 0, 0);
+                    return cl;
+                });
+            }
+            frames.push({ layers: newLayers, audio: null });
+            currentFrameIndex = frames.length - 1;
+            currentLayerIndex = 0;
+            saveHistory(); renderFrame(); updateFrameIndicator();
+        }
+
+        function duplicateFrame() { addNewFrame(true); }
+        function nextFrame() { if (currentFrameIndex < frames.length - 1 && !isPlaying) { currentFrameIndex++; currentLayerIndex = 0; renderFrame(); updateFrameIndicator(); } }
+        function prevFrame() { if (currentFrameIndex > 0 && !isPlaying) { currentFrameIndex--; currentLayerIndex = 0; renderFrame(); updateFrameIndicator(); } }
+        function updateFrameIndicator() { document.getElementById('frameIndicator').innerText = `${currentFrameIndex + 1} / ${frames.length}`; }
+
+        function startPlayingLoop() {
+            if (frames.length <= 1) {
+                alert("Buat minimal 2 frame terlebih dahulu agar animasi bisa berjalan!");
+                togglePlay();
+                return;
+            }
+            let idx = currentFrameIndex;
+            function step() {
+                if (!isPlaying) return;
+                currentFrameIndex = idx;
+                renderFrame(true);
+                updateFrameIndicator();
+                if (frames[idx].audio) playSoundEffect(frames[idx].audio);
+                
+                idx = (idx + 1) % frames.length;
+                playTimeout = setTimeout(step, playSpeed);
+            }
+            step();
+        }
+
+        function togglePlay() {
+            initAudio();
+            isPlaying = !isPlaying;
+            let btn = document.getElementById('btnPlay');
+            if (isPlaying) { 
+                btn.innerText = '⏸️'; 
+                startPlayingLoop(); 
+            } else { 
+                btn.innerText = '▶️'; 
+                clearTimeout(playTimeout); 
+                renderFrame(); 
+            }
+        }
+
+        function openOutline() { initAudio(); renderOutlineList(); document.getElementById('outlineModal').style.display = 'flex'; }
+        function closeOutline() { document.getElementById('outlineModal').style.display = 'none'; }
+
+        function renderOutlineList() {
+            let containerList = document.getElementById('outlineFrameList');
+            containerList.innerHTML = '';
+            frames.forEach((f, idx) => {
+                let thumbCanvas = document.createElement('canvas');
+                thumbCanvas.width = 100; thumbCanvas.height = 100;
+                let tCtx = thumbCanvas.getContext('2d');
+                tCtx.fillStyle = '#FFFFFF'; tCtx.fillRect(0, 0, 100, 100);
+                f.layers.forEach(l => tCtx.drawImage(l, 0, 0, 100, 100));
+
+                let card = document.createElement('div');
+                card.className = `frame-card ${idx === currentFrameIndex ? 'active' : ''}`;
+                card.onclick = () => { currentFrameIndex = idx; currentLayerIndex = 0; renderFrame(); updateFrameIndicator(); closeOutline(); };
+                card.innerHTML = `
+                    <img src="${thumbCanvas.toDataURL()}" class="frame-thumb">
+                    <div class="frame-info">
+                        <div class="frame-info-top"><span>Frame ${idx + 1} ${f.audio ? '🔊('+f.audio+')' : ''}</span></div>
+                        <div class="frame-actions">
+                            <button class="action-add" onclick="event.stopPropagation(); addFrameAt(${idx})">Add</button>
+                            <button class="action-copy" onclick="event.stopPropagation(); copyFrameAt(${idx})">Copy</button>
+                            <button class="action-remove" onclick="event.stopPropagation(); removeFrameAt(${idx})">Remove</button>
+                        </div>
+                    </div>
+                `;
+                containerList.appendChild(card);
+            });
+        }
+
+        function addFrameAt(idx) {
+            let newLayer = document.createElement('canvas');
+            newLayer.width = canvas.width; newLayer.height = canvas.height;
+            newLayer.getContext('2d').fillStyle = 'transparent';
+            frames.splice(idx + 1, 0, { layers: [newLayer], audio: null });
+            currentFrameIndex = idx + 1; saveHistory(); renderFrame(); updateFrameIndicator(); renderOutlineList();
+        }
+
+        function copyFrameAt(idx) {
+            let clonedLayers = frames[idx].layers.map(l => {
+                let cl = document.createElement('canvas');
+                cl.width = canvas.width; cl.height = canvas.height;
+                cl.getContext('2d').drawImage(l, 0, 0);
+                return cl;
+            });
+            frames.splice(idx + 1, 0, { layers: clonedLayers, audio: frames[idx].audio });
+            currentFrameIndex = idx + 1; saveHistory(); renderFrame(); updateFrameIndicator(); renderOutlineList();
+        }
+
+        function removeFrameAt(idx) {
+            if (frames.length <= 1) { alert("Minimal 1 frame!"); return; }
+            frames.splice(idx, 1);
+            if (currentFrameIndex >= frames.length) currentFrameIndex = frames.length - 1;
+            renderFrame(); updateFrameIndicator(); renderOutlineList();
+        }
+
+        function openGallery() { document.getElementById('galleryInput').click(); }
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    let lCtx = frames[currentFrameIndex].layers[currentLayerIndex].getContext('2d');
+                    lCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    saveHistory(); renderFrame();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
